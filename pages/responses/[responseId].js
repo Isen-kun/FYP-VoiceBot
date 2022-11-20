@@ -50,7 +50,7 @@ const Response = () => {
               user.uid === doc.data().userId &&
               !doc.data().isTemplate
             ) {
-              console.log(doc.data().formData);
+              // console.log(doc.data().formData);
               const response = JSON.stringify(doc.data().formData);
               return (
                 <div key={doc.id} className="mt-3">

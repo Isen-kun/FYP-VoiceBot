@@ -15,6 +15,7 @@ const Dashboard = () => {
   const db = firebase.firestore();
   const addFormDocument = async (values, name) => {
     await db.collection("data").doc(name).set({
+      docId: name,
       formName: values.name,
       isTemplate: true,
       userId: user.uid,

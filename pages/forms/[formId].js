@@ -3,6 +3,8 @@ import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 import { useCollection } from "react-firebase-hooks/firestore";
 import firebase from "../../firebase/config";
+import { useSpeechRecognition } from "react-speech-kit";
+import { useSpeechSynthesis } from "react-speech-kit";
 
 const Forms = () => {
   const router = useRouter();
@@ -14,7 +16,7 @@ const Forms = () => {
 
   const [name, setName] = useState("");
   const [uid, setUid] = useState("");
-  // const [initialValues, setInitialValues] = useState({});
+  const [formData, setFormData] = useState({});
 
   useEffect(() => {
     if (!formsLoading && forms) {
@@ -22,7 +24,7 @@ const Forms = () => {
         if (formId === doc.id && doc.data().isTemplate) {
           setName(doc.data().formName);
           setUid(doc.data().userId);
-          // setInitialValues(doc.data().formData);
+          setFormData(doc.data().formData);
         }
       });
     }
@@ -51,19 +53,65 @@ const Forms = () => {
   };
 
   const onSubmit = (values) => {
-    router.push("/thanks");
     // console.log(values);
     // console.log(name);
     // console.log(uid);
+    router.push("/thanks");
     addFormDocument(values);
+  };
+
+  const formik = useFormik({
+    initialValues: initialValues,
+    onSubmit: onSubmit,
+  });
+
+  const [value, setValue] = useState("");
+  const [currQue, setCurQue] = useState("");
+  const { listen, listening, stop } = useSpeechRecognition({
+    onResult: (result) => {
+      setValue(result);
+    },
+  });
+
+  const onStart = (q) => {
+    setCurQue(q);
+    listen();
+  };
+
+  const onStop = (q) => {
+    stop();
+    setCurQue("");
+    // console.log(q);
+    // console.log(value);
+    formik.values[q] = value;
+    setValue("");
+  };
+
+  const { speak } = useSpeechSynthesis();
+  const onFormStart = () => {
+    speak({ text: "The name of this form is" });
+    speak({ text: name });
+    speak({ text: "Kindly fill out this VoiceBot form" });
+    speak({ text: "Interact with the form using your voice" });
+    speak({ text: "The questions in this form are:" });
+
+    onFormFill();
+  };
+
+  const onFormFill = () => {
+    // console.log(formData);
+    Object.keys(formData).forEach((q) => {
+      speak({ text: q });
+    });
   };
 
   return (
     <div className="container">
       <div className="pt-5 pb-3 text-center">
-        <h2>Kindly fill out this VoiceBot form</h2>
+        <h1>{name}</h1>
+        <h4>Kindly fill out this VoiceBot form</h4>
         <h4>Interact with the form using your voice</h4>
-        <button className="btn btn-outline-primary m-4">
+        <button className="btn btn-outline-primary m-4" onClick={onFormStart}>
           Start filling out the form
         </button>
         {formsLoading && (
@@ -73,43 +121,79 @@ const Forms = () => {
         )}
       </div>
 
-      <Formik initialValues={initialValues} onSubmit={onSubmit}>
-        <Form className="w-90 mx-auto">
-          {!formsLoading &&
-            forms &&
-            forms.docs.map((doc) => {
-              if (formId === doc.id && doc.data().isTemplate) {
-                const Form = doc.data().formData;
-                return Object.keys(Form).map((q) => {
-                  return (
-                    <div className="row mb-3" key={q}>
-                      <label className="col-sm-2 col-form-label fw-bold">
-                        {q}
-                      </label>
-                      <div className="col-sm-10">
-                        <Field
-                          type="text"
-                          id={q}
-                          name={q}
-                          className="form-control"
-                        />
-                      </div>
+      {/* <Formik initialValues={initialValues} onSubmit={onSubmit}> */}
+      <form
+        className="w-90 mx-auto"
+        onSubmit={formik.handleSubmit}
+        // onReset={formik.handleReset}
+      >
+        {!formsLoading &&
+          forms &&
+          forms.docs.map((doc) => {
+            if (formId === doc.id && doc.data().isTemplate) {
+              const Form = doc.data().formData;
+              return Object.keys(Form).map((q) => {
+                return (
+                  <div className="row mb-3" key={q}>
+                    <label className="col-sm-2 col-form-label fw-bold">
+                      {q}
+                    </label>
+                    <div className="col-sm-8">
+                      {/* <Field */}
+                      <input
+                        type="text"
+                        id={q}
+                        name={q}
+                        className="form-control"
+                        onChange={formik.handleChange}
+                        value={formik.values[q]}
+                      />
                     </div>
-                  );
-                });
-              }
-            })}
+                    {/* <button
+                      className="btn btn-light col-sm-1"
+                      type="button"
+                      onMouseDown={listen}
+                      onMouseUp={stop}
+                    >
+                      🎤
+                    </button> */}
 
-          <div className="text-center">
-            {/* <button type="reset" className="btn btn-secondary m-1">
-              Reset
-            </button> */}
-            <button type="submit" className="btn btn-success m-1">
-              Submit
-            </button>
-          </div>
-        </Form>
-      </Formik>
+                    <button
+                      className="btn btn-light col-sm-1"
+                      onClick={() => onStart(q)}
+                      type="button"
+                      disabled={listening}
+                    >
+                      🎤 Start
+                    </button>
+                    <button
+                      className="btn btn-light col-sm-1"
+                      onClick={() => onStop(q)}
+                      type="button"
+                      disabled={!listening || q !== currQue}
+                    >
+                      🎤 Stop
+                    </button>
+                  </div>
+                );
+              });
+            }
+          })}
+
+        <div className="text-center">
+          {/* <button
+            type="reset"
+            className="btn btn-secondary m-1"
+            // onClick={formik.handleReset}
+          >
+            Reset
+          </button> */}
+          <button type="submit" className="btn btn-success m-1">
+            Submit
+          </button>
+        </div>
+      </form>
+      {/* </Formik> */}
     </div>
   );
 };
