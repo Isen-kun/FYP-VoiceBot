@@ -1,9 +1,10 @@
-import { useFormik } from "formik";
+import { useFormik, Formik, Form, Field } from "formik";
 import { useRouter } from "next/router";
+import { useEffect, useState } from "react";
 import { useCollection } from "react-firebase-hooks/firestore";
 import firebase from "../../firebase/config";
 
-const Form = () => {
+const Forms = () => {
   const router = useRouter();
   const formId = router.query.formId;
 
@@ -11,50 +12,58 @@ const Form = () => {
     firebase.firestore().collection("data")
   );
 
-  // if (!formsLoading && forms) {
-  //   forms.docs.map((doc) => {
-  //     if (formId === doc.id && doc.data().isTemplate) {
-  //       return doc.data().formData;
-  //       console.log(doc.data().formData);
-  //     }
-  //   });
-  // }
+  const [name, setName] = useState("");
+  const [uid, setUid] = useState("");
+  // const [initialValues, setInitialValues] = useState({});
 
-  const formik = useFormik({
-    initialValues: {},
+  useEffect(() => {
+    if (!formsLoading && forms) {
+      forms.docs.map((doc) => {
+        if (formId === doc.id && doc.data().isTemplate) {
+          setName(doc.data().formName);
+          setUid(doc.data().userId);
+          // setInitialValues(doc.data().formData);
+        }
+      });
+    }
+  }, [formsLoading]);
 
-    onSubmit: (values) => {
-      console.log("rajorshi");
-      router.push("/thanks");
-    },
-  });
+  let initialValues = {};
+  if (!formsLoading && forms) {
+    forms.docs.map((doc) => {
+      if (formId === doc.id && doc.data().isTemplate) {
+        // return doc.data().formData;
+        // console.log(doc.data());
+        initialValues = doc.data().formData;
+      }
+    });
+  }
 
-  const onStart = () => {
-    getLocalStream();
-    setTimeout(() => {
-      alert("Your microphone is in use by another application.");
-    }, "3000");
+  const db = firebase.firestore();
+  const addFormDocument = async (values) => {
+    await db.collection("data").doc().set({
+      docId: formId,
+      formName: name,
+      isTemplate: false,
+      userId: uid,
+      formData: values,
+    });
   };
 
-  function getLocalStream() {
-    navigator.mediaDevices
-      .getUserMedia({ video: false, audio: true })
-      .then((stream) => {
-        window.localStream = stream; // A
-        window.localAudio.srcObject = stream; // B
-        window.localAudio.autoplay = true; // C
-      })
-      .catch((err) => {
-        console.error(`you got an error: ${err}`);
-      });
-  }
+  const onSubmit = (values) => {
+    router.push("/thanks");
+    // console.log(values);
+    // console.log(name);
+    // console.log(uid);
+    addFormDocument(values);
+  };
 
   return (
     <div className="container">
       <div className="pt-5 pb-3 text-center">
         <h2>Kindly fill out this VoiceBot form</h2>
         <h4>Interact with the form using your voice</h4>
-        <button className="btn btn-outline-primary m-4" onClick={onStart}>
+        <button className="btn btn-outline-primary m-4">
           Start filling out the form
         </button>
         {formsLoading && (
@@ -64,38 +73,45 @@ const Form = () => {
         )}
       </div>
 
-      <form className="w-90 mx-auto" onSubmit={formik.handleSubmit}>
-        {!formsLoading &&
-          forms &&
-          forms.docs.map((doc) => {
-            if (formId === doc.id && doc.data().isTemplate) {
-              const Form = doc.data().formData;
-              return Object.keys(Form).map((q) => {
-                return (
-                  <div className="row mb-3" key={q}>
-                    <label className="col-sm-2 col-form-label fw-bold">
-                      {q}
-                    </label>
-                    <div className="col-sm-10">
-                      <input type="text" className="form-control" />
+      <Formik initialValues={initialValues} onSubmit={onSubmit}>
+        <Form className="w-90 mx-auto">
+          {!formsLoading &&
+            forms &&
+            forms.docs.map((doc) => {
+              if (formId === doc.id && doc.data().isTemplate) {
+                const Form = doc.data().formData;
+                return Object.keys(Form).map((q) => {
+                  return (
+                    <div className="row mb-3" key={q}>
+                      <label className="col-sm-2 col-form-label fw-bold">
+                        {q}
+                      </label>
+                      <div className="col-sm-10">
+                        <Field
+                          type="text"
+                          id={q}
+                          name={q}
+                          className="form-control"
+                        />
+                      </div>
                     </div>
-                  </div>
-                );
-              });
-            }
-          })}
+                  );
+                });
+              }
+            })}
 
-        <div className="text-center">
-          <button type="reset" className="btn btn-secondary m-1">
-            Reset
-          </button>
-          <button type="submit" className="btn btn-success m-1">
-            Submit
-          </button>
-        </div>
-      </form>
+          <div className="text-center">
+            {/* <button type="reset" className="btn btn-secondary m-1">
+              Reset
+            </button> */}
+            <button type="submit" className="btn btn-success m-1">
+              Submit
+            </button>
+          </div>
+        </Form>
+      </Formik>
     </div>
   );
 };
 
-export default Form;
+export default Forms;
