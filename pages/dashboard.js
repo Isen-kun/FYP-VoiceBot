@@ -7,6 +7,7 @@ import { useRouter } from "next/router";
 import { useFormik } from "formik";
 import { v4 as uuidv4 } from "uuid";
 import Link from "next/link";
+import { CopyToClipboard } from "react-copy-to-clipboard";
 
 const Dashboard = () => {
   const router = useRouter();
@@ -151,6 +152,13 @@ const Dashboard = () => {
                         <Link href={"/responses/" + doc.id}>
                           <a className="btn btn-outline-info">View Responses</a>
                         </Link>
+                        <CopyToClipboard
+                          text={`http://localhost:3000/forms/${doc.id}`}
+                        >
+                          <button className="btn btn-outline-warning ms-2">
+                            Share Form
+                          </button>
+                        </CopyToClipboard>
                       </div>
                     </div>
                   );
