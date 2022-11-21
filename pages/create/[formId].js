@@ -1,8 +1,9 @@
 import NavBar from "../../components/NavBar";
 import firebase from "../../firebase/config";
 import { useRouter } from "next/router";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useFormik } from "formik";
+import { useCollection } from "react-firebase-hooks/firestore";
 
 const Create = () => {
   const [questions, setQuestions] = useState({});
@@ -27,11 +28,31 @@ const Create = () => {
     },
   });
 
+  const [forms, formsLoading, formErrors] = useCollection(
+    firebase.firestore().collection("data")
+  );
+  const [formName, setFormName] = useState("");
+
+  useEffect(() => {
+    if (forms) {
+      forms.docs.map((doc) => {
+        if (formId === doc.data().docId && doc.data().isTemplate) {
+          setFormName(doc.data().formName);
+        }
+      });
+    }
+  }, [formsLoading]);
+
   return (
     <>
       <NavBar />
       <div className="container mt-3">
-        <h2>Admission Information Form</h2>
+        <h2>{formName}</h2>
+        {formsLoading && (
+          <div className="spinner-border text-dark" role="status">
+            <span className="visually-hidden">Loading...</span>
+          </div>
+        )}
 
         <div className="pt-3">
           <h4>Your current Questions:</h4>

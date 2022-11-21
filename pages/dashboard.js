@@ -155,7 +155,13 @@ const Dashboard = () => {
                         <CopyToClipboard
                           text={`http://localhost:3000/forms/${doc.id}`}
                         >
-                          <button className="btn btn-outline-warning ms-2">
+                          <button
+                            className="btn btn-outline-warning ms-2"
+                            onClick={() =>
+                              alert(`The link has been copied to clipboard.
+You can now share the link with others for them to fill up the form.`)
+                            }
+                          >
                             Share Form
                           </button>
                         </CopyToClipboard>
