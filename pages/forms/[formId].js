@@ -1,6 +1,6 @@
 import { useFormik, Formik, Form, Field } from "formik";
 import { useRouter } from "next/router";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useLayoutEffect, useRef } from "react";
 import { useCollection } from "react-firebase-hooks/firestore";
 import firebase from "../../firebase/config";
 import { useSpeechRecognition } from "react-speech-kit";
@@ -17,6 +17,104 @@ const Forms = () => {
   const [name, setName] = useState("");
   const [uid, setUid] = useState("");
   const [formData, setFormData] = useState({});
+  const [onFormStartPending, setOnFormStartPending] = useState(false);
+
+  const recognitionRef = useRef(null);
+
+  const startSpeechRecognition = () => {
+    const recognition = new window.webkitSpeechRecognition();
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.lang = "en-US";
+    recognition.onresult = handleResponse;
+
+    recognitionRef.current = recognition;
+    recognition.start();
+  };
+
+  const handleResponse = (event) => {
+    const response = event.results[0][0].transcript.toLowerCase();
+
+    if (response === "yes" || response === "yes.") {
+      console.log(response);
+
+      const utterance = new SpeechSynthesisUtterance(
+        "Thank you. Please start filling out the form."
+      );
+      window.speechSynthesis.speak(utterance);
+      if (!formsLoading) {
+        onFormStart();
+      } else {
+        setOnFormStartPending(true);
+      }
+    } else {
+      console.log(response);
+      const utterance = new SpeechSynthesisUtterance(
+        "Sorry, I didn't understand. Please try again."
+      );
+      window.speechSynthesis.speak(utterance);
+      setTimeout(() => {
+        speakPrompt();
+      }, 5000);
+    }
+
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
+      recognitionRef.current = null;
+    }
+  };
+
+  const speakPrompt = () => {
+    const utterance = new SpeechSynthesisUtterance(
+      "Are you ready to fill up the form?"
+    );
+    window.speechSynthesis.speak(utterance);
+    utterance.onend = startSpeechRecognition; // start speech recognition after the prompt is finished
+  };
+
+  // const { speak } = useSpeechSynthesis();
+  // const onFormStart = () => {
+  //   speak({ text: "The name of this form is" });
+  //   speak({ text: name });
+  //   speak({ text: "Kindly fill out this VoiceBot form" });
+  //   speak({ text: "Interact with the form using your voice" });
+  //   speak({ text: "The questions in this form are:" });
+
+  //   onFormFill();
+  // };
+
+  const onFormStart = () => {
+    const synth = window.speechSynthesis;
+    const utterances = [
+      new SpeechSynthesisUtterance("The name of this form is"),
+      new SpeechSynthesisUtterance(name),
+      new SpeechSynthesisUtterance("Kindly fill out this VoiceBot form"),
+      new SpeechSynthesisUtterance("Interact with the form using your voice"),
+      new SpeechSynthesisUtterance("The questions in this form are:"),
+    ];
+
+    utterances.forEach((utterance) => {
+      synth.speak(utterance);
+    });
+
+    onFormFill();
+    // console.log("form start running");
+  };
+
+  // const onFormFill = () => {
+  //   // console.log(formData);
+  //   Object.keys(formData).forEach((q) => {
+  //     speak({ text: q });
+  //   });
+  // };
+
+  const onFormFill = () => {
+    const synth = window.speechSynthesis;
+    Object.keys(formData).forEach((q) => {
+      const utterance = new SpeechSynthesisUtterance(q);
+      synth.speak(utterance);
+    });
+  };
 
   useEffect(() => {
     if (!formsLoading && forms) {
@@ -28,7 +126,16 @@ const Forms = () => {
         }
       });
     }
-  }, [formsLoading]);
+    if (!formsLoading && onFormStartPending) {
+      onFormStart();
+      setOnFormStartPending(false);
+    }
+  }, [formsLoading, onFormStartPending]);
+
+  useLayoutEffect(() => {
+    // console.log("Layout running");
+    speakPrompt();
+  }, []);
 
   let initialValues = {};
   if (!formsLoading && forms) {
@@ -87,23 +194,54 @@ const Forms = () => {
     setValue("");
   };
 
-  const { speak } = useSpeechSynthesis();
-  const onFormStart = () => {
-    speak({ text: "The name of this form is" });
-    speak({ text: name });
-    speak({ text: "Kindly fill out this VoiceBot form" });
-    speak({ text: "Interact with the form using your voice" });
-    speak({ text: "The questions in this form are:" });
+  // const [value, setValue] = useState("");
+  // const [currQue, setCurQue] = useState("");
+  // const [isListening, setIsListening] = useState(false);
+  // let SpeechRecognition;
+  // let recognition;
 
-    onFormFill();
-  };
+  // if (typeof window !== "undefined") {
+  //   SpeechRecognition =
+  //     window.SpeechRecognition || window.webkitSpeechRecognition;
+  //   recognition = new SpeechRecognition();
 
-  const onFormFill = () => {
-    // console.log(formData);
-    Object.keys(formData).forEach((q) => {
-      speak({ text: q });
-    });
-  };
+  //   recognition.continuous = true;
+  //   recognition.interimResults = true;
+  //   recognition.lang = "en-US";
+
+  //   recognition.onstart = () => {
+  //     setIsListening(true);
+  //   };
+
+  //   recognition.onend = () => {
+  //     setIsListening(false);
+  //   };
+
+  //   recognition.onresult = (event) => {
+  //     let transcript = "";
+  //     for (let i = event.resultIndex; i < event.results.length; i++) {
+  //       const result = event.results[i][0].transcript;
+  //       if (event.results[i].isFinal) {
+  //         transcript += result;
+  //       } else {
+  //         setValue(result);
+  //       }
+  //     }
+  //     setValue(transcript);
+  //   };
+  // }
+
+  // const onStart = (q) => {
+  //   setCurQue(q);
+  //   recognition.start();
+  // };
+
+  // const onStop = (q) => {
+  //   recognition.stop();
+  //   setCurQue("");
+  //   formik.values[q] = value;
+  //   setValue("");
+  // };
 
   return (
     <div className="container">
