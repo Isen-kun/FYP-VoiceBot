@@ -153,7 +153,7 @@ const Dashboard = () => {
                           <a className="btn btn-outline-info">View Responses</a>
                         </Link>
                         <CopyToClipboard
-                          text={`http://localhost:3000/forms/${doc.id}`}
+                          text={`https://fyp-voice-bot.netlify.app/forms/${doc.id}`}
                         >
                           <button
                             className="btn btn-outline-warning ms-2"
